@@ -16,14 +16,15 @@ using namespace sf;
 const int Width = 1920;
 const int Height = 1080;
 
-const int enemyCount = 10;
+const int enemyCount = 5;
 const int maxBulletCount = 10;
 
 const float EnemySpeed = 200.0f;
-const float BulletSpeed = 1000.0f;
 const float CharacterSpeed = 1000.0f;
+const float BulletSpeed = 1000.0f;
 
-class Game {
+class Game 
+{
 private:
     RenderWindow window;
     vector<Sprite> bulletSprites;
@@ -49,8 +50,13 @@ private:
     Font font;
     time_t startTime;
     float elapsedTime;
+    float elapsedTimeSinceEnemy;
+    float enemySpeed;
+    float characterSpeed;
+    float bulletSpeed;
 
-    struct Enemy {
+    struct Enemy 
+    {
         Sprite sprite;
         float x;
         float y;
@@ -62,11 +68,24 @@ private:
     vector<Enemy> enemies;
 
 public:
-    Game() : window(VideoMode(Width, Height), "Game", Style::Fullscreen), isCharacterRight(true), bulletCount(maxBulletCount), gameOver(false), elapsedTime(0.0f) {}
+    Game()
+        : window(VideoMode(Width, Height), "Game", Style::Fullscreen),
+        isCharacterRight(true),
+        bulletCount(maxBulletCount),
+        gameOver(false),
+        elapsedTime(0.0f),
+        elapsedTimeSinceEnemy(0.0f),
+        enemySpeed(EnemySpeed),
+        characterSpeed(CharacterSpeed),
+        bulletSpeed(BulletSpeed)
+    {
+    }
 
-    void run() {
+    void run()
+    {
         initialize();
-        while (window.isOpen()) {
+        while (window.isOpen())
+        {
             processEvents();
             update();
             render();
@@ -74,16 +93,19 @@ public:
     }
 
 private:
-    void initialize() {
+    void initialize()
+    {
         srand(static_cast<unsigned int>(time(NULL)));
         window.setFramerateLimit(240);
         window.setVerticalSyncEnabled(true);
 
-        if (!music.openFromFile("Gamefiles/Sound/soundtrack.mp3")) {
+        if (!music.openFromFile("Gamefiles/Sound/soundtrack.mp3"))
+        {
             cout << "Failed to load music" << endl;
         }
 
-        if (!font.loadFromFile("Gamefiles/Font/font.ttf")) {
+        if (!font.loadFromFile("Gamefiles/Font/font.ttf"))
+        {
             cout << "Failed to load font" << endl;
         }
 
@@ -110,13 +132,14 @@ private:
         float scaleRatio = std::max(scaleRatioX, scaleRatioY);
         gameoverfonSprite.setScale(scaleRatio, scaleRatio);
 
-        for (int i = 0; i < enemyCount; i++) {
+        for (int i = 0; i < enemyCount; i++)
+        {
             Enemy enemy;
             enemy.sprite.setTexture(enemyTexture);
-            enemy.x = static_cast<float>(rand() % Width);
-            enemy.y = 0 + rand() % 200;
-            enemy.speedX = static_cast<float>(rand() % 2) == 0 ? -EnemySpeed : EnemySpeed;
-            enemy.speedY = EnemySpeed;
+            enemy.x = static_cast<float>(rand() % (Width - 100));
+            enemy.y = -enemy.sprite.getGlobalBounds().height;
+            enemy.speedX = static_cast<float>(rand() % 2) == 0 ? -enemySpeed : enemySpeed;
+            enemy.speedY = enemySpeed;
             enemy.isEnemyRight = enemy.speedX > 0;
             enemies.push_back(enemy);
         }
@@ -124,158 +147,203 @@ private:
         startTime = time(0);
     }
 
-    Texture textureLoad(const string& filePath) {
+    Texture textureLoad(const string& filePath)
+    {
         Texture texture;
-        if (!texture.loadFromFile(filePath)) {
+        if (!texture.loadFromFile(filePath))
+        {
             cout << "Failed to load texture: " << filePath << endl;
         }
         return texture;
     }
 
-    void processEvents() {
+    void processEvents()
+    {
         Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == Event::Closed) {
+        while (window.pollEvent(event))
+        {
+            if (event.type == Event::Closed)
+            {
                 window.close();
             }
-            else if (Keyboard::isKeyPressed(Keyboard::Escape)) {
+            else if (Keyboard::isKeyPressed(Keyboard::Escape))
+            {
                 window.close();
             }
-            else if (gameOver) {
-                if ((event.type == Event::KeyPressed) && !(Keyboard::isKeyPressed(Keyboard::Escape))) {
+            else if (gameOver)
+            {
+                if ((event.type == Event::KeyPressed) && !(Keyboard::isKeyPressed(Keyboard::Escape)))
+                {
                     restartGame();
                 }
-                else if (Keyboard::isKeyPressed(Keyboard::Escape)) {
+                else if (Keyboard::isKeyPressed(Keyboard::Escape))
+                {
                     window.close();
                 }
             }
         }
     }
 
-    void restartGame() {
+    void restartGame()
+    {
         gameOver = false;
         killCount = 0;
         startTime = time(0);
-        for (auto& enemy : enemies) {
+        elapsedTimeSinceEnemy = 0.0f;
+        enemySpeed = EnemySpeed;
+
+        enemies.clear();
+
+        for (int i = 0; i < enemyCount; i++)
+        {
+            Enemy enemy;
             enemy.sprite.setTexture(enemyTexture);
-            enemy.x = static_cast<float>(rand() % Width);
-            enemy.y = 0 + rand() % 200;
-            enemy.speedX = static_cast<float>(rand() % 2) == 0 ? -EnemySpeed : EnemySpeed;
-            enemy.speedY = EnemySpeed;
+            enemy.x = static_cast<float>(rand() % (Width - 100));
+            enemy.y = -enemy.sprite.getGlobalBounds().height;
+            enemy.speedX = static_cast<float>(rand() % 2) == 0 ? -enemySpeed : enemySpeed;
+            enemy.speedY = enemySpeed;
             enemy.isEnemyRight = enemy.speedX > 0;
+            enemies.push_back(enemy);
         }
-        for (auto& bulletSprite : bulletSprites) {
-            bulletSprite.setPosition(-100, -100);
-        }
+
+        bulletSprites.clear();
         bulletCount = maxBulletCount;
     }
 
-    bool checkCollision(const Sprite& sprite1, const Sprite& sprite2) {
+    bool checkCollision(const Sprite& sprite1, const Sprite& sprite2)
+    {
         FloatRect bounds1 = sprite1.getGlobalBounds();
         FloatRect bounds2 = sprite2.getGlobalBounds();
         return bounds1.intersects(bounds2);
     }
 
-    void characterLogic(float deltaTime) {
-        if (Keyboard::isKeyPressed(Keyboard::D)) {
+    void characterLogic(float deltaTime)
+    {
+        if (Keyboard::isKeyPressed(Keyboard::D))
+        {
             characterSprite.setTexture(characterTexture);
             characterSprite.setScale(1, 1);
             isCharacterRight = true;
-            characterSprite.move(CharacterSpeed * deltaTime, 0);
+            characterSprite.move(characterSpeed * deltaTime, 0);
         }
-        else if (Keyboard::isKeyPressed(Keyboard::A)) {
+        else if (Keyboard::isKeyPressed(Keyboard::A))
+        {
             characterSprite.setTexture(characterTexture);
             characterSprite.setScale(-1, 1);
             isCharacterRight = false;
-            characterSprite.move(-CharacterSpeed * deltaTime, 0);
+            characterSprite.move(-characterSpeed * deltaTime, 0);
         }
         Vector2f characterPosition = characterSprite.getPosition();
-        if (characterPosition.x > Width - 100) {
+        if (characterPosition.x > Width - 100)
+        {
             characterPosition.x = 0;
             characterSprite.setPosition(characterPosition);
         }
-        else if (characterPosition.x < 0) {
+        else if (characterPosition.x < 0)
+        {
             characterPosition.x = Width - 100;
             characterSprite.setPosition(characterPosition);
         }
-        else {
+        else
+        {
             characterSprite.setPosition(characterPosition);
         }
     }
 
-    void bulletLogic(float deltaTime) {
+    void bulletLogic(float deltaTime)
+    {
         static bool isUpKeyPressed = false;
         static bool isLeftKeyPressed = false;
         static bool isRightKeyPressed = false;
 
-        if (Keyboard::isKeyPressed(Keyboard::Left) && !isLeftKeyPressed && bulletCount > 0) {
+        if (Keyboard::isKeyPressed(Keyboard::Left) && !isLeftKeyPressed && bulletCount > 0)
+        {
             isLeftKeyPressed = true;
             Sprite bulletSprite(bulletLeftTexture);
-            if (isCharacterRight) {
+            if (isCharacterRight)
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x - 25, characterSprite.getPosition().y + 25);
             }
-            else {
+            else
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x - 100, characterSprite.getPosition().y + 25);
             }
             bulletSprites.push_back(bulletSprite);
             bulletCount--;
         }
-        else if (!Keyboard::isKeyPressed(Keyboard::Left)) {
+        else if (!Keyboard::isKeyPressed(Keyboard::Left))
+        {
             isLeftKeyPressed = false;
         }
 
-        if (Keyboard::isKeyPressed(Keyboard::Right) && !isRightKeyPressed && bulletCount > 0) {
+        if (Keyboard::isKeyPressed(Keyboard::Right) && !isRightKeyPressed && bulletCount > 0)
+        {
             isRightKeyPressed = true;
             Sprite bulletSprite(bulletRightTexture);
-            if (isCharacterRight) {
+            if (isCharacterRight)
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x + 35, characterSprite.getPosition().y + 25);
             }
-            else {
+            else
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x - 35, characterSprite.getPosition().y + 25);
             }
             bulletSprites.push_back(bulletSprite);
             bulletCount--;
         }
-        else if (!Keyboard::isKeyPressed(Keyboard::Right)) {
+        else if (!Keyboard::isKeyPressed(Keyboard::Right))
+        {
             isRightKeyPressed = false;
         }
 
-        if (Keyboard::isKeyPressed(Keyboard::Up) && !isUpKeyPressed && bulletCount > 0) {
+        if (Keyboard::isKeyPressed(Keyboard::Up) && !isUpKeyPressed && bulletCount > 0)
+        {
             isUpKeyPressed = true;
             Sprite bulletSprite(bulletUpTexture);
-            if (isCharacterRight) {
+            if (isCharacterRight)
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x + 10, characterSprite.getPosition().y - 40);
             }
-            else {
+            else
+            {
                 bulletSprite.setPosition(characterSprite.getPosition().x - 64, characterSprite.getPosition().y - 40);
             }
             bulletSprites.push_back(bulletSprite);
             bulletCount--;
         }
-        else if (!Keyboard::isKeyPressed(Keyboard::Up)) {
+        else if (!Keyboard::isKeyPressed(Keyboard::Up))
+        {
             isUpKeyPressed = false;
         }
 
-        for (auto& bulletSprite : bulletSprites) {
-            if (bulletSprite.getTexture() == &bulletUpTexture) {
-                bulletSprite.move(0, -BulletSpeed * deltaTime);
+        for (auto& bulletSprite : bulletSprites)
+        {
+            if (bulletSprite.getTexture() == &bulletUpTexture)
+            {
+                bulletSprite.move(0, -bulletSpeed * deltaTime);
             }
-            else if (bulletSprite.getTexture() == &bulletLeftTexture) {
-                bulletSprite.move(-BulletSpeed * deltaTime, 0);
+            else if (bulletSprite.getTexture() == &bulletLeftTexture)
+            {
+                bulletSprite.move(-bulletSpeed * deltaTime, 0);
             }
-            else if (bulletSprite.getTexture() == &bulletRightTexture) {
-                bulletSprite.move(BulletSpeed * deltaTime, 0);
+            else if (bulletSprite.getTexture() == &bulletRightTexture)
+            {
+                bulletSprite.move(bulletSpeed * deltaTime, 0);
             }
 
-            if (bulletSprite.getPosition().y < 0 || bulletSprite.getPosition().x > Width || bulletSprite.getPosition().x < 0) {
+            if (bulletSprite.getPosition().y < 0 || bulletSprite.getPosition().x > Width || bulletSprite.getPosition().x < 0)
+            {
                 bulletSprite.setPosition(-100, -100);
                 bulletCount++;
             }
-            else {
-                for (auto& enemy : enemies) {
-                    if (checkCollision(bulletSprite, enemy.sprite)) {
+            else
+            {
+                for (auto& enemy : enemies)
+                {
+                    if (checkCollision(bulletSprite, enemy.sprite))
+                    {
                         enemy.x = static_cast<float>(rand() % (Width - 100));
-                        enemy.y = 50;
+                        enemy.y = -enemy.sprite.getGlobalBounds().height;
                         bulletSprite.setPosition(-100, -100);
                         bulletCount++;
                         killCount++;
@@ -286,81 +354,87 @@ private:
         }
     }
 
-    Vector2f normalize(const Vector2f& vector) {
+    Vector2f normalize(const Vector2f& vector)
+    {
         float length = std::sqrt(vector.x * vector.x + vector.y * vector.y);
-        if (length != 0) {
+        if (length != 0)
+        {
             return Vector2f(vector.x / length, vector.y / length);
         }
         return Vector2f(0, 0);
     }
 
-    void enemyLogic(float deltaTime) {
-        for (auto& enemy : enemies) {
+    void enemyLogic(float deltaTime)
+    {
+        for (auto& enemy : enemies)
+        {
             Vector2f direction = characterSprite.getPosition() - enemy.sprite.getPosition();
             direction = normalize(direction);
 
             float deviationAngle = static_cast<float>(rand() % 181 - 90);
-            float rotation = atan2(direction.y, direction.x) + deviationAngle * 3.14159265f / 180.0f;
+            float rotation = atan2(direction.y, direction.x) + deviationAngle / 180.0f;
             direction.x = cos(rotation);
             direction.y = sin(rotation);
             direction = normalize(direction);
 
-            enemy.x += direction.x * EnemySpeed * deltaTime;
-            enemy.y += direction.y * EnemySpeed * deltaTime;
+            enemy.x += direction.x * enemySpeed * deltaTime;
+            enemy.y += direction.y * enemySpeed * deltaTime;
 
             if (enemy.x < 0)
                 enemy.x = 0;
             else if (enemy.x > Width - enemy.sprite.getGlobalBounds().width)
                 enemy.x = Width - enemy.sprite.getGlobalBounds().width;
 
-            if (enemy.y < 0)
-                enemy.y = 0;
-            else if (enemy.y > Height - enemy.sprite.getGlobalBounds().height)
-                enemy.y = Height - enemy.sprite.getGlobalBounds().height;
-
             enemy.sprite.setPosition(enemy.x, enemy.y);
 
-            // Дополнительная логика для отталкивания от других врагов
-            for (auto& otherEnemy : enemies) {
-                if (&enemy != &otherEnemy) {
-                    if (checkCollision(enemy.sprite, otherEnemy.sprite)) {
+            for (auto& otherEnemy : enemies)
+            {
+                if (&enemy != &otherEnemy)
+                {
+                    if (checkCollision(enemy.sprite, otherEnemy.sprite))
+                    {
                         Vector2f repulsionDirection = enemy.sprite.getPosition() - otherEnemy.sprite.getPosition();
                         repulsionDirection = normalize(repulsionDirection);
 
-                        enemy.x += repulsionDirection.x * EnemySpeed * deltaTime;
-                        enemy.y += repulsionDirection.y * EnemySpeed * deltaTime;
+                        enemy.x += repulsionDirection.x * enemySpeed * deltaTime;
+                        enemy.y += repulsionDirection.y * enemySpeed * deltaTime;
                     }
                 }
             }
 
             enemy.sprite.setPosition(enemy.x, enemy.y);
-
-            if (enemy.speedX > 0) {
-                enemy.sprite.setScale(1, 1);
-                enemy.isEnemyRight = true;
-            }
-            else {
-                enemy.sprite.setScale(-1, 1);
-                enemy.isEnemyRight = false;
-            }
-
-            if (checkCollision(enemy.sprite, characterSprite)) {
+            if (checkCollision(enemy.sprite, characterSprite))
+            {
                 gameOver = true;
             }
         }
     }
 
+    void addEnemy()
+    {
+        Enemy enemy;
+        enemy.sprite.setTexture(enemyTexture);
+        enemy.x = static_cast<float>(rand() % (Width - 100));
+        enemy.y = -enemy.sprite.getGlobalBounds().height;
+        enemy.speedX = static_cast<float>(rand() % 2) == 0 ? -enemySpeed : enemySpeed;
+        enemy.speedY = enemySpeed;
+        enemy.isEnemyRight = enemy.speedX > 0;
+        enemies.push_back(enemy);
+    }
 
-
-    void render() {
+    void render()
+    {
         window.clear(Color::Black);
         window.draw(backgroundSprite);
-        if (!gameOver) {
+        if (!gameOver)
+        {
             window.draw(characterSprite);
-            for (auto& bulletSprite : bulletSprites) {
+            for (auto& bulletSprite : bulletSprites)
+            {
                 window.draw(bulletSprite);
             }
-            for (auto& enemy : enemies) {
+            for (auto& enemy : enemies)
+            {
                 window.draw(enemy.sprite);
             }
             Text killCountText;
@@ -384,10 +458,11 @@ private:
             window.draw(killCountText);
             window.draw(timeText);
         }
-        else {
+        else
+        {
             Text restartText;
             restartText.setFont(font);
-            restartText.setString("Press  any  key  to  restart");
+            restartText.setString("Press any key to restart");
             restartText.setCharacterSize(36);
             restartText.setFillColor(Color::White);
             restartText.setOutlineColor(Color::Black);
@@ -398,7 +473,7 @@ private:
 
             Text EscText;
             EscText.setFont(font);
-            EscText.setString("Escape  to  exit");
+            EscText.setString("Escape to exit");
             EscText.setCharacterSize(24);
             EscText.setFillColor(Color::White);
             EscText.setOutlineColor(Color::Black);
@@ -426,17 +501,32 @@ private:
         window.display();
     }
 
-    void update() {
+    void update()
+    {
         float deltaTime = clock.restart().asSeconds();
         elapsedTime += deltaTime;
-        if (!gameOver) {
+        elapsedTimeSinceEnemy += deltaTime;
+
+        if (!gameOver)
+        {
             characterLogic(deltaTime);
             bulletLogic(deltaTime);
             enemyLogic(deltaTime);
         }
+
+        if (elapsedTimeSinceEnemy >= 30.0f)
+        {
+            addEnemy();
+            elapsedTimeSinceEnemy = 0.0f;
+        }
+
+        enemySpeed += 1.0f * deltaTime;
+        characterSpeed += 1.0f * deltaTime;
+        bulletSpeed += 1.0f * deltaTime;
     }
 
-    string getCurrentTime() {
+    string getCurrentTime()
+    {
         time_t now = time(0);
         double seconds = difftime(now, startTime);
         int hours = static_cast<int>(seconds / 3600);
