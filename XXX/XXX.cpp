@@ -191,6 +191,8 @@ private:
         startTime = time(0);
         elapsedTimeSinceEnemy = 0.0f;
         enemySpeed = EnemySpeed;
+        characterSpeed = CharacterSpeed;
+        bulletSpeed = BulletSpeed;
 
         enemies.clear();
 
