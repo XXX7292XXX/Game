@@ -17,13 +17,13 @@ const int Width = 1920;
 const int Height = 1080;
 
 const int enemyCount = 5;
-const int maxBulletCount = 10;
+const int maxBulletCount = 3;
 
 const float EnemySpeed = 200.0f;
 const float CharacterSpeed = 1000.0f;
 const float BulletSpeed = 1000.0f;
 
-class Game 
+class Game
 {
 private:
     RenderWindow window;
@@ -32,6 +32,7 @@ private:
     int bulletCount;
     int killCount = 0;
     bool gameOver;
+    bool gameStarted;
     Clock clock;
 
     Sprite backgroundSprite;
@@ -39,9 +40,7 @@ private:
     Sprite characterSprite;
 
     Texture backgroundTexture;
-    Texture bulletLeftTexture;
-    Texture bulletRightTexture;
-    Texture bulletUpTexture;
+    Texture bulletTexture;
     Texture characterTexture;
     Texture enemyTexture;
     Texture gameoverfonTexture;
@@ -55,7 +54,7 @@ private:
     float characterSpeed;
     float bulletSpeed;
 
-    struct Enemy 
+    struct Enemy
     {
         Sprite sprite;
         float x;
@@ -67,17 +66,22 @@ private:
 
     vector<Enemy> enemies;
 
+    Text startText; // Text for the start button
+    bool startButtonPressed; // Flag to indicate if the start button has been pressed
+
 public:
     Game()
         : window(VideoMode(Width, Height), "Game", Style::Fullscreen),
         isCharacterRight(true),
         bulletCount(maxBulletCount),
         gameOver(false),
+        gameStarted(false),
         elapsedTime(0.0f),
         elapsedTimeSinceEnemy(0.0f),
         enemySpeed(EnemySpeed),
         characterSpeed(CharacterSpeed),
-        bulletSpeed(BulletSpeed)
+        bulletSpeed(BulletSpeed),
+        startButtonPressed(false)
     {
     }
 
@@ -114,9 +118,7 @@ private:
         music.play();
 
         backgroundTexture = textureLoad("GameFiles/Images/fon.png");
-        bulletLeftTexture = textureLoad("GameFiles/Images/bullet_left.png");
-        bulletRightTexture = textureLoad("GameFiles/Images/bullet_right.png");
-        bulletUpTexture = textureLoad("GameFiles/Images/bullet_up.png");
+        bulletTexture = textureLoad("GameFiles/Images/bullet.png");
         characterTexture = textureLoad("GameFiles/Images/character.png");
         enemyTexture = textureLoad("GameFiles/Images/enemy.png");
         gameoverfonTexture = textureLoad("GameFiles/Images/gameoverfon.png");
@@ -143,7 +145,6 @@ private:
             enemy.isEnemyRight = enemy.speedX > 0;
             enemies.push_back(enemy);
         }
-
         startTime = time(0);
     }
 
@@ -172,7 +173,7 @@ private:
             }
             else if (gameOver)
             {
-                if ((event.type == Event::KeyPressed) && !(Keyboard::isKeyPressed(Keyboard::Escape)))
+                if (event.type == Event::KeyPressed && startButtonPressed) // Check if start button has been pressed
                 {
                     restartGame();
                 }
@@ -181,9 +182,34 @@ private:
                     window.close();
                 }
             }
+            else if (!gameStarted) // Check if game has not started
+            {
+                if ((event.type == Event::KeyPressed) && !startButtonPressed)
+                {
+                    startButtonPressed = true;
+                    gameStarted = true;
+                }
+            }
         }
     }
 
+    void startGame()
+    {
+        RectangleShape background(Vector2f(Width, Height));
+        background.setFillColor(Color::Black);
+        Text sartText;
+        startText.setFont(font);
+        startText.setString("Press any key to start"); // Text for the start button
+        startText.setCharacterSize(36 * 2);
+        startText.setFillColor(Color::White);
+        startText.setOutlineColor(Color::Black);
+        startText.setOutlineThickness(5);
+        FloatRect textBounds3 = startText.getLocalBounds();
+        startText.setOrigin(textBounds3.left + textBounds3.width / 2.0f, textBounds3.top + textBounds3.height / 2.0f);
+        startText.setPosition(Width / 2.0f, Height / 2.0f);
+
+        window.draw(background); window.draw(startText);
+    }
     void restartGame()
     {
         gameOver = false;
@@ -210,6 +236,8 @@ private:
 
         bulletSprites.clear();
         bulletCount = maxBulletCount;
+
+        startButtonPressed = false;
     }
 
     bool checkCollision(const Sprite& sprite1, const Sprite& sprite2)
@@ -261,7 +289,9 @@ private:
         if (Keyboard::isKeyPressed(Keyboard::Left) && !isLeftKeyPressed && bulletCount > 0)
         {
             isLeftKeyPressed = true;
-            Sprite bulletSprite(bulletLeftTexture);
+            Sprite bulletSprite(bulletTexture);
+            bulletSprite.setScale(-1, 1);
+            bulletSprite.setRotation(-90);
             if (isCharacterRight)
             {
                 bulletSprite.setPosition(characterSprite.getPosition().x - 25, characterSprite.getPosition().y + 25);
@@ -281,14 +311,16 @@ private:
         if (Keyboard::isKeyPressed(Keyboard::Right) && !isRightKeyPressed && bulletCount > 0)
         {
             isRightKeyPressed = true;
-            Sprite bulletSprite(bulletRightTexture);
+            Sprite bulletSprite(bulletTexture);
+            bulletSprite.setScale(1, 1);
+            bulletSprite.setRotation(90);
             if (isCharacterRight)
             {
-                bulletSprite.setPosition(characterSprite.getPosition().x + 35, characterSprite.getPosition().y + 25);
+                bulletSprite.setPosition(characterSprite.getPosition().x + 100, characterSprite.getPosition().y + 25);
             }
             else
             {
-                bulletSprite.setPosition(characterSprite.getPosition().x - 35, characterSprite.getPosition().y + 25);
+                bulletSprite.setPosition(characterSprite.getPosition().x + 30, characterSprite.getPosition().y + 25);
             }
             bulletSprites.push_back(bulletSprite);
             bulletCount--;
@@ -301,7 +333,7 @@ private:
         if (Keyboard::isKeyPressed(Keyboard::Up) && !isUpKeyPressed && bulletCount > 0)
         {
             isUpKeyPressed = true;
-            Sprite bulletSprite(bulletUpTexture);
+            Sprite bulletSprite(bulletTexture);
             if (isCharacterRight)
             {
                 bulletSprite.setPosition(characterSprite.getPosition().x + 10, characterSprite.getPosition().y - 40);
@@ -320,37 +352,53 @@ private:
 
         for (auto& bulletSprite : bulletSprites)
         {
-            if (bulletSprite.getTexture() == &bulletUpTexture)
+            if (bulletSprite.getRotation() == 0)
             {
-                bulletSprite.move(0, -bulletSpeed * deltaTime);
+                bulletSprite.move(0, -bulletSpeed * deltaTime); // движение вверх
             }
-            else if (bulletSprite.getTexture() == &bulletLeftTexture)
+            else if (bulletSprite.getRotation() == 90)
             {
-                bulletSprite.move(-bulletSpeed * deltaTime, 0);
+                bulletSprite.move(bulletSpeed * deltaTime, 0); // движение вправо
             }
-            else if (bulletSprite.getTexture() == &bulletRightTexture)
+            else
             {
-                bulletSprite.move(bulletSpeed * deltaTime, 0);
+                bulletSprite.move(-bulletSpeed * deltaTime, 0); // движение влево
             }
 
             if (bulletSprite.getPosition().y < 0 || bulletSprite.getPosition().x > Width || bulletSprite.getPosition().x < 0)
             {
-                bulletSprite.setPosition(-100, -100);
+                auto it = std::find_if(bulletSprites.begin(), bulletSprites.end(), [&bulletSprite](const sf::Sprite& bullet)
+                    {
+                        return bullet.getPosition() == bulletSprite.getPosition();
+                    });
+
+                if (it != bulletSprites.end())
+                {
+                    bulletSprites.erase(it);
+                }
                 bulletCount++;
             }
+
             else
             {
-                for (auto& enemy : enemies)
+                for (auto it = bulletSprites.begin(); it != bulletSprites.end();)
                 {
-                    if (checkCollision(bulletSprite, enemy.sprite))
+                    bool bulletCollided = false;
+
+                    for (auto& enemy : enemies)
                     {
-                        enemy.x = static_cast<float>(rand() % (Width - 100));
-                        enemy.y = -enemy.sprite.getGlobalBounds().height;
-                        bulletSprite.setPosition(-100, -100);
-                        bulletCount++;
-                        killCount++;
-                        break;
+                        if (!bulletCollided && checkCollision(*it, enemy.sprite))
+                        {
+                            enemy.x = static_cast<float>(rand() % (Width - 100));
+                            enemy.y = -enemy.sprite.getGlobalBounds().height;
+                            it = bulletSprites.erase(it);
+                            bulletCount++;
+                            killCount++;
+                            bulletCollided = true;
+                            break;
+                        }
                     }
+                    if (!bulletCollided){ ++it; }    
                 }
             }
         }
@@ -428,77 +476,113 @@ private:
     {
         window.clear(Color::Black);
         window.draw(backgroundSprite);
-        if (!gameOver)
+        if (gameStarted)
         {
-            window.draw(characterSprite);
-            for (auto& bulletSprite : bulletSprites)
+            if (!gameOver)
             {
-                window.draw(bulletSprite);
+                window.draw(characterSprite);
+                for (auto& bulletSprite : bulletSprites)
+                {
+                    window.draw(bulletSprite);
+                }
+                for (auto& enemy : enemies)
+                {
+                    window.draw(enemy.sprite);
+                }
+
+                Text elapsedTimeText;
+                elapsedTimeText.setFont(font);
+
+                int hours = static_cast<int>(elapsedTime) / 3600;
+                int minutes = static_cast<int>(elapsedTime) / 60 % 60;
+                int seconds = static_cast<int>(elapsedTime) % 60;
+
+                string timeString = "Time  " + to_string(hours) + "  h  " + to_string(minutes) + "  m  " + to_string(seconds) + "  s";
+                elapsedTimeText.setString(timeString);
+
+                elapsedTimeText.setCharacterSize(36);
+                elapsedTimeText.setFillColor(Color::White);
+                elapsedTimeText.setOutlineColor(Color::Black);
+                elapsedTimeText.setOutlineThickness(5);
+
+                FloatRect textBounds1 = elapsedTimeText.getLocalBounds();
+                elapsedTimeText.setOrigin(textBounds1.left + textBounds1.width / 2.0f, textBounds1.top + textBounds1.height / 2.0f);
+                elapsedTimeText.setPosition(Width - textBounds1.width / 2.0f - 20.0f, 20.0f);
+
+                window.draw(elapsedTimeText);
+
+
+                Text killCountText;
+                killCountText.setFont(font);
+                killCountText.setString("Kills  " + to_string(killCount));
+                killCountText.setCharacterSize(36);
+                killCountText.setFillColor(Color::White);
+                killCountText.setOutlineColor(Color::Black);
+                killCountText.setOutlineThickness(5);
+                FloatRect textBounds2 = killCountText.getLocalBounds();
+                killCountText.setOrigin(textBounds2.left + textBounds2.width / 2.0f, textBounds2.top + textBounds2.height / 2.0f);
+                killCountText.setPosition(Width - textBounds2.width / 2.0f - 20.0f, 70.0f);
+                window.draw(killCountText);
+
+                Text bulletCountText;
+                bulletCountText.setFont(font);
+                bulletCountText.setString("Bullets  " + to_string(bulletCount));
+                bulletCountText.setCharacterSize(36);
+                bulletCountText.setFillColor(Color::White);
+                bulletCountText.setOutlineColor(Color::Black);
+                bulletCountText.setOutlineThickness(5);
+                FloatRect textBounds3 = bulletCountText.getLocalBounds();
+                bulletCountText.setOrigin(textBounds3.left + textBounds3.width / 2.0f, textBounds3.top + textBounds3.height / 2.0f);
+                bulletCountText.setPosition(Width - textBounds3.width / 2.0f - 20.0f, 120.0f);
+
+                window.draw(bulletCountText);
+                window.draw(killCountText);
+                window.draw(elapsedTimeText);
             }
-            for (auto& enemy : enemies)
+            else
             {
-                window.draw(enemy.sprite);
+                Text restartText;
+                restartText.setFont(font);
+                restartText.setString("Press any key to restart");
+                restartText.setCharacterSize(36);
+                restartText.setFillColor(Color::White);
+                restartText.setOutlineColor(Color::Black);
+                restartText.setOutlineThickness(2);
+                FloatRect textBounds = restartText.getLocalBounds();
+                restartText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+                restartText.setPosition(Width / 2.0f - 27, Height / 2.0f + 175.0f);
+
+                Text EscText;
+                EscText.setFont(font);
+                EscText.setString("Escape to exit");
+                EscText.setCharacterSize(24);
+                EscText.setFillColor(Color::White);
+                EscText.setOutlineColor(Color::Black);
+                EscText.setOutlineThickness(2);
+                FloatRect textBounds1 = EscText.getLocalBounds();
+                EscText.setOrigin(textBounds1.left + textBounds1.width / 2.0f, textBounds1.top + textBounds1.height / 2.0f);
+                EscText.setPosition(Width / 2.0f - 30, Height / 2.0f + 200.0f);
+
+                Text gameOverText;
+                gameOverText.setFont(font);
+                gameOverText.setString("\tGAME\n\tOVER");
+                gameOverText.setCharacterSize(180);
+                gameOverText.setFillColor(Color::White);
+                gameOverText.setOutlineColor(Color::Black);
+                gameOverText.setOutlineThickness(2);
+                FloatRect textBounds2 = gameOverText.getLocalBounds();
+                gameOverText.setOrigin(textBounds2.left + textBounds2.width / 2.0f, textBounds2.top + textBounds2.height / 2.0f);
+                gameOverText.setPosition(Width / 2 - 75, Height / 2 );
+
+                window.draw(gameoverfonSprite);
+                window.draw(gameOverText);
+                window.draw(restartText);
+                window.draw(EscText);
             }
-            Text killCountText;
-            killCountText.setFont(font);
-            killCountText.setString("Kills\n\t\t" + to_string(killCount));
-            killCountText.setCharacterSize(36);
-            killCountText.setFillColor(Color::Black);
-            killCountText.setOutlineColor(Color::White);
-            killCountText.setOutlineThickness(2);
-            killCountText.setPosition(Width - 115, 5);
-
-            Text timeText;
-            timeText.setFont(font);
-            timeText.setString("\tTime\n" + getCurrentTime());
-            timeText.setCharacterSize(36);
-            timeText.setFillColor(Color::Black);
-            timeText.setOutlineColor(Color::White);
-            timeText.setOutlineThickness(2);
-            timeText.setPosition(Width - 270, 5);
-
-            window.draw(killCountText);
-            window.draw(timeText);
         }
         else
         {
-            Text restartText;
-            restartText.setFont(font);
-            restartText.setString("Press any key to restart");
-            restartText.setCharacterSize(36);
-            restartText.setFillColor(Color::White);
-            restartText.setOutlineColor(Color::Black);
-            restartText.setOutlineThickness(2);
-            FloatRect textBounds = restartText.getLocalBounds();
-            restartText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-            restartText.setPosition(Width / 2.0f, Height / 2.0f + 125.0f);
-
-            Text EscText;
-            EscText.setFont(font);
-            EscText.setString("Escape to exit");
-            EscText.setCharacterSize(24);
-            EscText.setFillColor(Color::White);
-            EscText.setOutlineColor(Color::Black);
-            EscText.setOutlineThickness(2);
-            FloatRect textBounds1 = EscText.getLocalBounds();
-            EscText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-            EscText.setPosition(Width / 2.0f + 125, Height / 2.0f + 170.0f);
-
-            Text gameOverText;
-            gameOverText.setFont(font);
-            gameOverText.setString("\tGAME\n\tOVER");
-            gameOverText.setCharacterSize(180);
-            gameOverText.setFillColor(Color::White);
-            gameOverText.setOutlineColor(Color::Black);
-            gameOverText.setOutlineThickness(2);
-            FloatRect textBounds2 = gameOverText.getLocalBounds();
-            gameOverText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-            gameOverText.setPosition(Width / 2 - 75, Height / 2 - 500 / 2);
-
-            window.draw(gameoverfonSprite);
-            window.draw(gameOverText);
-            window.draw(restartText);
-            window.draw(EscText);
+            startGame();
         }
         window.display();
     }
@@ -509,37 +593,44 @@ private:
         elapsedTime += deltaTime;
         elapsedTimeSinceEnemy += deltaTime;
 
-        if (!gameOver)
+        if (gameStarted)
         {
-            characterLogic(deltaTime);
-            bulletLogic(deltaTime);
-            enemyLogic(deltaTime);
-        }
+            if (!gameOver)
+            {
+                characterLogic(deltaTime);
+                bulletLogic(deltaTime);
+                enemyLogic(deltaTime);
+            }
 
-        if (elapsedTimeSinceEnemy >= 30.0f)
-        {
-            addEnemy();
-            elapsedTimeSinceEnemy = 0.0f;
-        }
+            if (elapsedTimeSinceEnemy >= 30.0f)
+            {
+                addEnemy();
+                elapsedTimeSinceEnemy = 0.0f;
+            }
 
-        enemySpeed += 1.0f * deltaTime;
-        characterSpeed += 1.0f * deltaTime;
-        bulletSpeed += 1.0f * deltaTime;
+            enemySpeed += 1.0f * deltaTime;
+            characterSpeed += 1.0f * deltaTime;
+            bulletSpeed += 1.0f * deltaTime;
+        }
     }
 
     string getCurrentTime()
     {
         time_t now = time(0);
         double seconds = difftime(now, startTime);
+
         int hours = static_cast<int>(seconds / 3600);
-        int minutes = static_cast<int>((seconds - hours * 3600) / 60);
-        int secs = static_cast<int>(seconds - hours * 3600 - minutes * 60);
+        seconds -= hours * 3600;
+        int minutes = static_cast<int>(seconds / 60);
+        seconds -= minutes * 60;
+        int secs = static_cast<int>(seconds);
 
-        char buffer[80];
-        sprintf_s(buffer, sizeof(buffer), "%02d %02d %02d", hours, minutes, secs);
+        // Добавляем ведущие нули при необходимости
+        string hoursStr = (hours < 10) ? "0" + to_string(hours) : to_string(hours);
+        string minutesStr = (minutes < 10) ? "0" + to_string(minutes) : to_string(minutes);
+        string secsStr = (secs < 10) ? "0" + to_string(secs) : to_string(secs);
 
-        string timeString = buffer;
-        return timeString;
+        return hoursStr + " " + minutesStr + " " + secsStr;
     }
 };
 
